@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 ## All data values are in the range 0 and 1 ( Normalization of Features )
 normalizeFeatures = lambda data: (data-data.min(axis=0))/data.max(axis=0)

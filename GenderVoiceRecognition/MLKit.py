@@ -1,6 +1,7 @@
 import csv
 import numpy as np
 import math
+from scipy import stats
 import Operators as op
 
 class ProbabilisticNeuralNetwork():
@@ -49,9 +50,45 @@ class ProbabilisticNeuralNetwork():
     loss = np.linalg.norm(s-rm,axis=1)
     loss = loss.mean()
     Wrong = np.count_nonzero(Y-result)
+    Accuracy = 100.0-(Wrong*100.0)/Y.shape[0]
     if printLoss:
-      print("Loss: {0}, WrongPredictions: {1}".format(loss,Wrong))
+      print("Loss: {0}, WrongPredictions: {1}, Accuracy: {2}%".format(loss,Wrong,Accuracy))
     else:
       return loss,Wrong
+
+class KNearestNeighbour():
+  def __init__(self,K):
+    self.W = None
+    self.ClassVector = None
+    self.classes = None
+    self.K = K
+
+  def Train(self,XTrain,YTrain,classes):
+    self.W = XTrain
+    self.ClassVector = YTrain
+    self.classes = classes
+
+  def getNearestNeighbour(self,X):
+    s = np.linalg.norm(self.W-X,axis=1)
+    nearest = np.argsort(s)[0:self.K]
+    return s[nearest], self.ClassVector[nearest]
+
+  def getKNNresult(self,X):
+    Result = []
+    for x in X:
+      _,result = self.getNearestNeighbour(x)
+      Result.append(stats.mode(result)[0][0])
+    Result = np.array(Result)
+    return Result
+
+  def getKNNLoss(self,X,Y,printLoss = False):
+    result = self.getKNNresult(X)
+    Wrong = np.count_nonzero(Y-result)
+    Accuracy = 100.0-(Wrong*100.0)/Y.shape[0]
+    if printLoss:
+      print("WrongPredictions: {0}, Accuracy: {1}%".format(Wrong,Accuracy))
+    else:
+      return Wrong,Accuracy
+
 
 
