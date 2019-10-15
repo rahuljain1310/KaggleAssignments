@@ -1,8 +1,9 @@
 # KaggleAssignments
-1. Gradient Descent
-2. KNN
+1. Linear Regression -- Done
+2. KNN -- Done
 3. Parzan Window - PNN Done
-4. GMM
-5. Logistic Regression
+4. GMM - Expectation Maximization
+5. Logistic Regression -- Done
 6. SoftMax
-7. Expectation Maximization
+7. FLDA
+8. Perceptron - Done 
