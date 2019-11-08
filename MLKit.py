@@ -236,19 +236,23 @@ class Softmax():
     return result
 
 class GaussianMixtureModal():
-  def __init__(self, N, XTrain,Iteration = 5):
+  def __init__(self, XTrain,N = 2, Iteration = 5):
     D = XTrain.shape[1]
     self.totalGaussian = N
-    self.Gprob = np.random.rand(N)
+    self.count = 0
+    self.Gprob = np.repeat(1/N,N)
     self.Gprob = self.Gprob / np.sum(self.Gprob)
-    self.Gmeans = np.random.rand(N,D)
+    self.Gmeans = np.random.rand(N,D)/10
     self.GStd = np.array([np.identity(D,dtype=float)]*N)
-    print(self.Gprob.shape,self.Gmeans.shape,self.GStd.shape)
     self.Train(XTrain,Iteration)
+
   
+  def getGaussian(self):
+    return self.Gprob, self.Gmeans, self.GStd
+
   def getGaussianProb(self,G,x):
     mean,prob,std = G
-    print(std,np.linalg.det(std))
+    # print(std,np.linalg.det(std))
     return prob*stats.multivariate_normal.pdf(x,mean=mean,cov=std)
 
   def getSampleProb(self,x,gaussians):
@@ -261,7 +265,7 @@ class GaussianMixtureModal():
     logLikelihood = 0
     for x in X:
       logLikelihood += math.log(self.getSampleProb(x,gaussians))
-    return logLikelihood
+    return logLikelihood/X.shape[0]
 
   def getGammaEstimate(self,gaussians,X):
     N = X.shape[0]
@@ -271,35 +275,51 @@ class GaussianMixtureModal():
         probData[i][j] = self.getGaussianProb(gaussians[j],X[i])
     probData = (probData.T)/np.sum(probData,axis=1)
     return probData.T
-    
+
+  def getLatentParameter(self,X):
+    gaussians = list(zip(self.Gmeans,self.Gprob,self.GStd))
+    prob = self.getGammaEstimate(gaussians,X)
+    return np.argmax(prob,axis=1)
+
   def Train(self,X,iterations):
-    for _ in range(100):
-      N = X.shape[0]
-      D = X.shape[1]
-      gaussians = list(zip(self.Gmeans,self.Gprob,self.GStd))
-      ll = self.getLogLikelihood(X,gaussians)
-      print(ll)  
-      gamma = self.getGammaEstimate(gaussians,X)
-      gammaSum = gamma.sum(axis=0)
-      print(gamma)
+    if self.count == 5:
+      print("Maximum Attempts Exceeded.")
+      return
+    N = X.shape[0]
+    D = X.shape[1]
+    ll = 0
+    try:
+      for i in range(iterations):
+        gaussians = list(zip(self.Gmeans,self.Gprob,self.GStd))
+        ll = self.getLogLikelihood(X,gaussians)
+        print("Iteration No: {0} Log Likelihood: {1}".format(i,ll), end='\r', flush=True)
+        ## E - Step ##
+        gamma = self.getGammaEstimate(gaussians,X)
+        gammaSum = gamma.sum(axis=0)
 
-      ## Getting Means
-      mean = (gamma.T).dot(X)
-      self.Gmeans = ((mean.T)/gammaSum).T
+        ## M - Step ##
 
-      ## Getting StandardDeviation
-      Covariance = []
-      for j in range(self.totalGaussian):
-        std = np.zeros((D,D),dtype=float)
-        mean,_,_ = gaussians[j] 
-        for k in range(N):
-          Xn = np.array([X[k]-mean])
-          XnMatrix = Xn.T.dot(Xn)
-          std += gamma[k][j]*XnMatrix
-        std = std/gammaSum[j]
-        Covariance.append(std)
-      Covariance = np.array(Covariance)
-      self.GStd = Covariance
+        mean = np.matmul(gamma.T,X)
+        Covariance = []
+        for j in range(self.totalGaussian):
+          std = np.zeros((D,D),dtype=float)
+          u,_,_ = gaussians[j] 
+          for k in range(N):
+            Xn = np.array([X[k]-u])
+            XnMatrix = np.matmul(Xn.T,Xn)
+            std += gamma[k][j]*XnMatrix
+          std = std/gammaSum[j]
+          Covariance.append(std)
+        Covariance = np.array(Covariance)
 
-      ## Getting Prob
-      self.Prob = gammaSum/N
+        ## Updating Standard Deviation 
+        self.GStd = Covariance
+        for j in range(self.totalGaussian):
+          mean[j] = mean[j]/gammaSum[j]
+        self.Gmeans = mean
+        self.Prob = gammaSum/N   
+      print("Training Complete LogLikelihood Final Value: {0}".format(ll))
+    except: 
+      self.Train(X,iterations) 
+      self.count += 1
+      

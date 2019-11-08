@@ -3,6 +3,15 @@ import numpy as np
 from MLKit import ProbabilisticNeuralNetwork,KNearestNeighbour,LogisticRegression, LinearRegression, Softmax, GaussianMixtureModal
 import Operators as op
 
+# performing preprocessing part 
+from sklearn.preprocessing import StandardScaler 
+from sklearn.decomposition import PCA 
+from sklearn.linear_model import LogisticRegression 
+from sklearn.metrics import confusion_matrix 
+from matplotlib.colors import ListedColormap 
+import matplotlib.pyplot as plt
+
+
 # ### =======================================================================================================
 # ### Import Data from CSV
 # ### =======================================================================================================
@@ -107,19 +116,32 @@ sm.getLoss(XTrain1,YTrain1,True)
 print("(Test Set)")
 sm.getLoss(XTest,YTest,True)
 
+## Gaussian Mixture Modal
+## =======================================================================================================
+
+print("\nWorking With Gaussian Mixture Modal...\n")
+
+sc = StandardScaler() 
+pca = PCA(n_components = 2) 
+
+X1 = sc.fit_transform(X) 
+X1 = pca.fit_transform(X1) 
+
+pr = GaussianMixtureModal(X1, N=3, Iteration=40)
+
+prob,means,std = pr.getGaussian()
+
+for i in range(len(Classes)):
+  classSamples = X1[np.where(Y==i)]
+  print("Class {0} as Mean {1}".format(i,np.mean(classSamples, axis=0)))
+
+print(means,std)
+
 ### =======================================================================================================
 ### PCA
 ### =======================================================================================================
 
-# performing preprocessing part 
 print("\nPCA Analysis\n")
-from sklearn.preprocessing import StandardScaler 
-from sklearn.decomposition import PCA 
-from sklearn.linear_model import LogisticRegression 
-from sklearn.metrics import confusion_matrix 
-from matplotlib.colors import ListedColormap 
-import matplotlib.pyplot as plt
-
 sc = StandardScaler() 
 pca = PCA(n_components = 2) 
 
@@ -153,4 +175,35 @@ plt.legend() # to show legend
 plt.show() 
 
 
+### =======================================================================================================
+### Generative Modal
+### =======================================================================================================
 
+print("\nGenerative Modal\n")
+
+
+X0 = np.random.multivariate_normal(means[0], std[0], 300)
+Y0 = np.repeat(0,300)
+X1 = np.random.multivariate_normal(means[1], std[1], 300)
+Y1 = np.repeat(1,300)
+X2 = np.random.multivariate_normal(means[2], std[2], 300)
+Y2 = np.repeat(2,300)
+
+Xg = np.concatenate((X0,X1,X2),axis=0)
+Yg = pr.getLatentParameter(Xg)
+
+X_set, y_set = Xg, Yg 
+X1, X2 = np.meshgrid(np.arange(start = X_set[:, 0].min() - 1, stop = X_set[:, 0].max() + 1, step = 0.01), np.arange(start = X_set[:, 1].min() - 1, stop = X_set[:, 1].max() + 1, step = 0.01) ) 
+plt.xlim(X1.min(), X1.max()) 
+plt.ylim(X2.min(), X2.max()) 
+
+for i, j in enumerate(np.unique(y_set)): 
+	plt.scatter(X_set[y_set == j, 0], X_set[y_set == j, 1], 
+				c = ListedColormap(('red', 'green', 'blue'))(i), label = j) 
+# plt.scatter( X_set[:, 0], X_set[:, 1], c = ListedColormap(('black', 'black', 'black'))(i), label = 0 ) 
+
+plt.title('PCA Analysis Iris Dataset.') 
+plt.xlabel('PC1') # for Xlabel 
+plt.ylabel('PC2') # for Ylabel 
+plt.legend() # to show legend 
+plt.show() 
